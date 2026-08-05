@@ -1,0 +1,7 @@
+dataxid-profiling
+data-profiling
+pandas
+polars
+matplotlib
+psutil
+numpy
