@@ -11,6 +11,13 @@ This repository contains comparisons between:
 
 The provided benchmark scripts can be used to compare profiling performance by running the tests on different datasets.
 
+## Dataset
+
+Benchmark tests were performed using the Kaggle **Retail Sales Data** dataset (100,000 rows).
+
+Source:
+https://www.kaggle.com/datasets/noir1112/retail-sales-data
+
 ## Metrics
 
 Measured metrics:
