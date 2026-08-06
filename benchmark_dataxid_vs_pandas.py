@@ -54,7 +54,32 @@ def create_dataset(df: pd.DataFrame, size: int) -> pd.DataFrame:
 def benchmark_dataxid(df: pd.DataFrame) -> float:
     """Measure DataXID Profiling execution time."""
 
-    config = ProfileConfig(mode="overview")
+    config = ProfileConfig(
+        mode="overview", # There is no colleration and interaction analysis in overview mode = faster than complete mode
+
+        # Type inference
+        text_unique_ratio=0.5,
+
+        # Alert thresholds
+        missing_threshold=0.05,
+        cardinality_threshold=0.95,
+        correlation_threshold=0.8,
+        constant_threshold=1,
+        zero_threshold=0.05,
+        skewness_threshold=2.0,
+        imbalance_threshold=0.9,
+        duplicate_threshold=0.0,
+        uniform_pvalue_threshold=0.05,
+
+        # Interaction settings
+        interaction_sample_size=100_000,
+        interaction_sample_seed=42,
+        interaction_cardinality_limit=50,
+
+        # Display settings
+        n_top_values=5,
+        histogram_bins=50,
+    )
 
     start = time.perf_counter()
 
