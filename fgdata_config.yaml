@@ -1,0 +1,174 @@
+# ==========================================================
+# FGData (YData Profiling) Benchmark Configuration
+# ==========================================================
+
+# Report settings
+title: FGData Profiling Report
+
+
+# ==========================================================
+# Dataset settings
+# ==========================================================
+
+dataset:
+  description: "Benchmark dataset"
+  creator: "Benchmark"
+
+
+# ==========================================================
+# Type inference
+# ==========================================================
+
+infer_dtypes: true
+
+
+# ==========================================================
+# Performance settings
+# ==========================================================
+
+# Number of workers
+# 0 means use all available CPU cores
+pool_size: 0
+
+# Show progress bar
+progress_bar: false
+
+
+# ==========================================================
+# Variable analysis settings
+# ==========================================================
+
+vars:
+
+  num:
+    # Quantiles calculation
+    quantiles:
+      - 0.05
+      - 0.25
+      - 0.5
+      - 0.75
+      - 0.95
+
+    # Detect highly skewed columns
+    skewness_threshold: 20
+
+    # Columns with low unique values can be treated as categorical
+    low_categorical_threshold: 5
+
+
+  cat:
+
+    # Maximum categories shown
+    cardinality_threshold: 50
+
+    # Number of values shown
+    n_obs: 5
+
+
+  bool:
+    n_obs: 3
+
+
+# ==========================================================
+# Missing values analysis
+# ==========================================================
+
+missing_diagrams:
+  bar: true
+  matrix: true
+  heatmap: true
+
+
+# ==========================================================
+# Correlation settings
+# ==========================================================
+
+correlations:
+
+  pearson:
+    calculate: false
+    warn_high_correlations: true
+    threshold: 0.9
+
+  spearman:
+    calculate: false
+    warn_high_correlations: false
+    threshold: 0.9
+
+  kendall:
+    calculate: false
+    warn_high_correlations: false
+    threshold: 0.9
+
+  phi_k:
+    calculate: false
+    warn_high_correlations: true
+    threshold: 0.9
+
+  cramers:
+    calculate: false
+    warn_high_correlations: true
+    threshold: 0.9
+
+
+# ==========================================================
+# Interaction analysis
+# ==========================================================
+
+interactions:
+
+  # Analyze relationships between variables
+  continuous: false
+
+  targets: []
+
+
+# ==========================================================
+# Report precision
+# ==========================================================
+
+report:
+  precision: 10
+
+
+# ==========================================================
+# Plot settings
+# ==========================================================
+
+plot:
+
+  image_format: png
+
+  dpi: 300
+
+  histogram:
+    bins: 50
+
+
+# ==========================================================
+# Samples
+# ==========================================================
+
+samples:
+
+  head: 10
+
+  tail: 10
+
+  random: 0
+
+
+# ==========================================================
+# Duplicate detection
+# ==========================================================
+
+duplicates:
+
+  head: 10
+
+
+# ==========================================================
+# Memory calculation
+# ==========================================================
+
+memory_deep: true

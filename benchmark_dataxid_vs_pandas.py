@@ -1,8 +1,14 @@
+import os
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from dataxid_profiling import ProfileReport, ProfileConfig
+
+from data_profiling import ProfileReport as FGProfileReport
+
+
+from dataset_generator import DatasetGenerator
 
 
 # ==========================================================
@@ -10,10 +16,16 @@ from dataxid_profiling import ProfileReport, ProfileConfig
 # ==========================================================
 
 DATASET_PATH = "sales_20k.csv"
-OUTPUT_FIGURE = "benchmark_dataxid_vs_pandas.png"
 
+OUTPUT_FIGURE = "benchmark_dataxid_vs_fgdata.png"
+
+REPORTS_DIR = "reports"
+
+
+# Change benchmark sizes here
 SIZES = [
     100_000,
+    250_000,
     500_000,
     1_000_000,
     2_500_000,
@@ -23,39 +35,58 @@ SIZES = [
 ]
 
 
+# Change column count here
+TARGET_COLUMNS = 10
+
+
+FG_CONFIG_PATH = "fgdata_config.yaml"
+
+
 # ==========================================================
-# Dataset Utilities
+# Dataset Loading
 # ==========================================================
 
 def load_dataset(path: str) -> pd.DataFrame:
-    """Load the benchmark dataset."""
+    """Load original dataset."""
 
     return pd.read_csv(path)
 
 
-def create_dataset(df: pd.DataFrame, size: int) -> pd.DataFrame:
+
+def _export_html(report, path: str) -> None:
     """
-    Expand the original dataset to the requested number of rows.
+    Save a profiling report as HTML.
     """
 
-    repeat = (size // len(df)) + 1
+    if hasattr(report, "to_file"):
 
-    return (
-        pd.concat([df] * repeat, ignore_index=True)
-        .iloc[:size]
-        .reset_index(drop=True)
-    )
+        report.to_file(path)
+
+    elif hasattr(report, "to_html"):
+
+        html = report.to_html()
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+
+    else:
+
+        raise AttributeError(
+            "Report object has no to_file/to_html method, "
+            "check the library's export API."
+        )
+
 
 
 # ==========================================================
 # Benchmark Functions
 # ==========================================================
 
-def benchmark_dataxid(df: pd.DataFrame) -> float:
-    """Measure DataXID Profiling execution time."""
+def benchmark_dataxid(df: pd.DataFrame, output_path: str) -> float:
+    """Measure DataXID profiling execution time."""
 
     config = ProfileConfig(
-        mode="overview", # There is no colleration and interaction analysis in overview mode = faster than complete mode
+        mode="overview",
 
         # Type inference
         text_unique_ratio=0.5,
@@ -81,132 +112,221 @@ def benchmark_dataxid(df: pd.DataFrame) -> float:
         histogram_bins=50,
     )
 
+
     start = time.perf_counter()
 
-    ProfileReport(df, config=config)
+    report = ProfileReport(
+        df,
+        config=config
+    )
+
+    # Export triggers the actual profiling computation
+    # (report generation is lazy otherwise)
+    _export_html(report, output_path)
 
     return time.perf_counter() - start
 
 
-def benchmark_pandas(df: pd.DataFrame) -> float:
-    """Measure equivalent Pandas analysis time."""
+
+def benchmark_fgdata(df: pd.DataFrame, output_path: str) -> float:
+    """Measure FG Data Profiling execution time."""
 
     start = time.perf_counter()
 
-    # Dataset overview
-    _ = df.shape
-    _ = df.dtypes
 
-    # Basic statistics
-    _ = df.describe(include="all")
+    report = FGProfileReport(
+        df,
+        config_file=FG_CONFIG_PATH
+    )
 
-    # Missing values
-    _ = df.isnull().sum()
+    # Export triggers the actual profiling computation
+    # (report generation is lazy otherwise)
+    _export_html(report, output_path)
 
-    # Duplicate rows
-    _ = df.duplicated().sum()
-
-    # Unique values
-    _ = df.nunique()
-
-    # Memory usage
-    _ = df.memory_usage(deep=True).sum()
 
     return time.perf_counter() - start
+
 
 
 # ==========================================================
 # Benchmark Runner
 # ==========================================================
 
-def run_benchmark(df_original: pd.DataFrame):
+def run_benchmark(
+    generator: DatasetGenerator
+):
 
     dataxid_times = []
-    pandas_times = []
+    fgdata_times = []
+
+
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+
 
     print("=" * 70)
-    print("DataXID Profiling vs Pandas Benchmark")
+    print("DataXID vs FG Data Profiling Benchmark")
     print("=" * 70)
+
 
     for size in SIZES:
 
-        df = create_dataset(df_original, size)
+        print(
+            f"\nGenerating dataset:"
+            f" {size:,} rows x {TARGET_COLUMNS} columns"
+        )
 
-        print(f"\nDataset Size : {len(df):,} rows")
 
-        dataxid_time = benchmark_dataxid(df)
-        pandas_time = benchmark_pandas(df)
+        df = generator.generate(
+            target_rows=size,
+            target_columns=TARGET_COLUMNS,
+        )
+
+
+        print(
+            f"Actual shape: {df.shape}"
+        )
+
+
+        dataxid_html = os.path.join(
+            REPORTS_DIR, f"dataxid_{size}.html"
+        )
+
+        fgdata_html = os.path.join(
+            REPORTS_DIR, f"fgdata_{size}.html"
+        )
+
+
+        print("Running DataXID...")
+
+        dataxid_time = benchmark_dataxid(df, dataxid_html)
+
+
+        print("Running FG Data...")
+
+        fgdata_time = benchmark_fgdata(df, fgdata_html)
+
+
 
         dataxid_times.append(dataxid_time)
-        pandas_times.append(pandas_time)
 
-        print(f"DataXID : {dataxid_time:.3f} s")
-        print(f"Pandas  : {pandas_time:.3f} s")
+        fgdata_times.append(fgdata_time)
 
-    return dataxid_times, pandas_times
+
+
+        print(
+            f"DataXID : {dataxid_time:.3f} sec"
+        )
+
+        print(
+            f"FG Data : {fgdata_time:.3f} sec"
+        )
+
+
+    return dataxid_times, fgdata_times
+
 
 
 # ==========================================================
-# Output Functions
+# Results
 # ==========================================================
 
-def print_results(dataxid_times, pandas_times):
-    """Print benchmark summary."""
+def print_results(
+    dataxid_times,
+    fgdata_times
+):
 
     print("\n")
     print("=" * 70)
     print("RESULTS")
     print("=" * 70)
 
-    print(f"{'Rows':>12} {'DataXID':>12} {'Pandas':>12} {'Speedup':>12}")
 
-    for size, dx, pd_time in zip(SIZES, dataxid_times, pandas_times):
+    print(
+        f"{'Rows':>12}"
+        f"{'DataXID':>15}"
+        f"{'FG Data':>15}"
+        f"{'FG/DataXID':>15}"
+    )
+
+
+    for size, dx, fg in zip(
+        SIZES,
+        dataxid_times,
+        fgdata_times
+    ):
 
         print(
             f"{size:>12,}"
-            f"{dx:>12.3f}"
-            f"{pd_time:>12.3f}"
-            f"{pd_time / dx:>12.2f}x"
+            f"{dx:>15.3f}"
+            f"{fg:>15.3f}"
+            f"{fg/dx:>15.2f}x"
         )
 
 
-def plot_results(dataxid_times, pandas_times):
-    """Generate and save the benchmark figure."""
 
-    plt.figure(figsize=(8, 5))
+# ==========================================================
+# Plot
+# ==========================================================
+
+def plot_results(
+    dataxid_times,
+    fgdata_times
+):
+
+    plt.figure(figsize=(8,5))
+
 
     plt.plot(
         SIZES,
         dataxid_times,
         marker="o",
-        linewidth=2,
-        label="DataXID Profiling",
+        label="DataXID"
     )
+
 
     plt.plot(
         SIZES,
-        pandas_times,
+        fgdata_times,
         marker="o",
-        linewidth=2,
-        label="Pandas",
+        label="FG Data"
     )
+
 
     plt.xscale("log")
 
-    plt.xlabel("Number of Rows")
-    plt.ylabel("Execution Time (seconds)")
-    plt.title("DataXID Profiling vs Pandas Benchmark")
+
+    plt.xlabel(
+        "Number of Rows"
+    )
+
+    plt.ylabel(
+        "Execution Time (seconds)"
+    )
+
+
+    plt.title(
+        "DataXID vs FG Data Profiling Benchmark"
+    )
+
 
     plt.grid(True)
+
     plt.legend()
+
 
     plt.tight_layout()
 
-    plt.savefig(OUTPUT_FIGURE, dpi=300)
 
-    print(f"\nFigure saved -> {OUTPUT_FIGURE}")
+    plt.savefig(
+        OUTPUT_FIGURE,
+        dpi=300
+    )
 
-    plt.show()
+
+    print(
+        f"\nFigure saved -> {OUTPUT_FIGURE}"
+    )
+
 
 
 # ==========================================================
@@ -215,13 +335,28 @@ def plot_results(dataxid_times, pandas_times):
 
 def main():
 
-    df = load_dataset(DATASET_PATH)
+    generator = DatasetGenerator(
+        DATASET_PATH,
+        seed=42
+    )
 
-    dataxid_times, pandas_times = run_benchmark(df)
 
-    print_results(dataxid_times, pandas_times)
+    dataxid_times, fgdata_times = run_benchmark(
+        generator
+    )
 
-    plot_results(dataxid_times, pandas_times)
+
+    print_results(
+        dataxid_times,
+        fgdata_times
+    )
+
+
+    plot_results(
+        dataxid_times,
+        fgdata_times
+    )
+
 
 
 if __name__ == "__main__":
