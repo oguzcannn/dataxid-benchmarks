@@ -6,56 +6,13 @@ from dataxid_profiling import ProfileReport, ProfileConfig
 
 
 # ==========================================================
-# DataXID Profiling Benchmark
-# ==========================================================
-def benchmark_dataxid(df):
-    config = ProfileConfig(mode="overview")
-
-    start = time.perf_counter()
-
-    ProfileReport(df, config=config)
-
-    return time.perf_counter() - start
-
-
-# ==========================================================
-# Pandas Benchmark
-# ==========================================================
-def benchmark_pandas(df):
-
-    start = time.perf_counter()
-
-    # Dataset bilgileri
-    _ = df.shape
-    _ = df.dtypes
-
-    # Temel istatistikler
-    _ = df.describe(include="all")
-
-    # Eksik değerler
-    _ = df.isnull().sum()
-
-    # Duplicate kayıtlar
-    _ = df.duplicated().sum()
-
-    # Unique değerler
-    _ = df.nunique()
-
-    # Bellek kullanımı
-    _ = df.memory_usage(deep=True).sum()
-
-    return time.perf_counter() - start
-
-
-# ==========================================================
-# MAIN
+# Constants
 # ==========================================================
 
-DATASET = "sales_20k.csv"
+DATASET_PATH = "sales_20k.csv"
+OUTPUT_FIGURE = "benchmark_dataxid_vs_pandas.png"
 
-df_original = pd.read_csv(DATASET)
-
-sizes = [
+SIZES = [
     100_000,
     500_000,
     1_000_000,
@@ -65,88 +22,182 @@ sizes = [
     20_000_000,
 ]
 
-dataxid_times = []
-pandas_times = []
 
-print("=" * 70)
-print("DataXID Profiling vs Pandas Benchmark")
-print("=" * 70)
+# ==========================================================
+# Dataset Utilities
+# ==========================================================
 
-for size in sizes:
+def load_dataset(path: str) -> pd.DataFrame:
+    """Load the benchmark dataset."""
 
-    # Veri setini büyüt
-    repeat = (size // len(df_original)) + 1
+    return pd.read_csv(path)
 
-    df = (
-        pd.concat([df_original] * repeat, ignore_index=True)
+
+def create_dataset(df: pd.DataFrame, size: int) -> pd.DataFrame:
+    """
+    Expand the original dataset to the requested number of rows.
+    """
+
+    repeat = (size // len(df)) + 1
+
+    return (
+        pd.concat([df] * repeat, ignore_index=True)
         .iloc[:size]
         .reset_index(drop=True)
     )
 
-    print(f"\nVeri Boyutu : {len(df):,} satır")
 
-    t_dataxid = benchmark_dataxid(df)
-    t_pandas = benchmark_pandas(df)
+# ==========================================================
+# Benchmark Functions
+# ==========================================================
 
-    dataxid_times.append(t_dataxid)
-    pandas_times.append(t_pandas)
+def benchmark_dataxid(df: pd.DataFrame) -> float:
+    """Measure DataXID Profiling execution time."""
 
-    print(f"DataXID : {t_dataxid:.3f} sn")
-    print(f"Pandas  : {t_pandas:.3f} sn")
+    config = ProfileConfig(mode="overview")
+
+    start = time.perf_counter()
+
+    ProfileReport(df, config=config)
+
+    return time.perf_counter() - start
 
 
-print("\n")
-print("=" * 70)
-print("SONUÇLAR")
-print("=" * 70)
+def benchmark_pandas(df: pd.DataFrame) -> float:
+    """Measure equivalent Pandas analysis time."""
 
-print(f"{'Rows':>12} {'DataXID':>12} {'Pandas':>12} {'Speedup':>12}")
+    start = time.perf_counter()
 
-for size, dx, pd_time in zip(sizes, dataxid_times, pandas_times):
+    # Dataset overview
+    _ = df.shape
+    _ = df.dtypes
 
-    print(
-        f"{size:>12,}"
-        f"{dx:>12.3f}"
-        f"{pd_time:>12.3f}"
-        f"{pd_time/dx:>12.2f}x"
+    # Basic statistics
+    _ = df.describe(include="all")
+
+    # Missing values
+    _ = df.isnull().sum()
+
+    # Duplicate rows
+    _ = df.duplicated().sum()
+
+    # Unique values
+    _ = df.nunique()
+
+    # Memory usage
+    _ = df.memory_usage(deep=True).sum()
+
+    return time.perf_counter() - start
+
+
+# ==========================================================
+# Benchmark Runner
+# ==========================================================
+
+def run_benchmark(df_original: pd.DataFrame):
+
+    dataxid_times = []
+    pandas_times = []
+
+    print("=" * 70)
+    print("DataXID Profiling vs Pandas Benchmark")
+    print("=" * 70)
+
+    for size in SIZES:
+
+        df = create_dataset(df_original, size)
+
+        print(f"\nDataset Size : {len(df):,} rows")
+
+        dataxid_time = benchmark_dataxid(df)
+        pandas_time = benchmark_pandas(df)
+
+        dataxid_times.append(dataxid_time)
+        pandas_times.append(pandas_time)
+
+        print(f"DataXID : {dataxid_time:.3f} s")
+        print(f"Pandas  : {pandas_time:.3f} s")
+
+    return dataxid_times, pandas_times
+
+
+# ==========================================================
+# Output Functions
+# ==========================================================
+
+def print_results(dataxid_times, pandas_times):
+    """Print benchmark summary."""
+
+    print("\n")
+    print("=" * 70)
+    print("RESULTS")
+    print("=" * 70)
+
+    print(f"{'Rows':>12} {'DataXID':>12} {'Pandas':>12} {'Speedup':>12}")
+
+    for size, dx, pd_time in zip(SIZES, dataxid_times, pandas_times):
+
+        print(
+            f"{size:>12,}"
+            f"{dx:>12.3f}"
+            f"{pd_time:>12.3f}"
+            f"{pd_time / dx:>12.2f}x"
+        )
+
+
+def plot_results(dataxid_times, pandas_times):
+    """Generate and save the benchmark figure."""
+
+    plt.figure(figsize=(8, 5))
+
+    plt.plot(
+        SIZES,
+        dataxid_times,
+        marker="o",
+        linewidth=2,
+        label="DataXID Profiling",
     )
 
+    plt.plot(
+        SIZES,
+        pandas_times,
+        marker="o",
+        linewidth=2,
+        label="Pandas",
+    )
+
+    plt.xscale("log")
+
+    plt.xlabel("Number of Rows")
+    plt.ylabel("Execution Time (seconds)")
+    plt.title("DataXID Profiling vs Pandas Benchmark")
+
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(OUTPUT_FIGURE, dpi=300)
+
+    print(f"\nFigure saved -> {OUTPUT_FIGURE}")
+
+    plt.show()
+
 
 # ==========================================================
-# GRAFİK
+# Main
 # ==========================================================
 
-plt.figure(figsize=(8, 5))
+def main():
 
-plt.plot(
-    sizes,
-    dataxid_times,
-    marker="o",
-    linewidth=2,
-    label="DataXID Profiling",
-)
+    df = load_dataset(DATASET_PATH)
 
-plt.plot(
-    sizes,
-    pandas_times,
-    marker="o",
-    linewidth=2,
-    label="Pandas",
-)
+    dataxid_times, pandas_times = run_benchmark(df)
 
-plt.xscale("log")
+    print_results(dataxid_times, pandas_times)
 
-plt.xlabel("Number of Rows")
-plt.ylabel("Execution Time (seconds)")
-plt.title("DataXID Profiling vs Pandas Benchmark")
+    plot_results(dataxid_times, pandas_times)
 
-plt.grid(True)
-plt.legend()
 
-plt.tight_layout()
-
-plt.savefig("benchmark_dataxid_vs_pandas.png", dpi=300)
-
-print("\nGrafik kaydedildi -> benchmark_dataxid_vs_pandas.png")
-
-plt.show()
+if __name__ == "__main__":
+    main()
