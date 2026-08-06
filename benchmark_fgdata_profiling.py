@@ -1,66 +1,61 @@
-import time
 import os
-import psutil
+
 import pandas as pd
 
-from data_profiling import ProfileReport
+from benchmarks.config import DATASET_PATH, REPORTS_DIR, FG_CONFIG_PATH
+from benchmarks.fgdata import profile
+from benchmarks.utils import get_ram_usage_mb
 
-process = psutil.Process(os.getpid())
 
-# Veri
-df = pd.read_csv("sales_20k.csv")
+df = pd.read_csv(DATASET_PATH)
+
+os.makedirs(REPORTS_DIR, exist_ok=True)
 
 print("=" * 60)
 print("FG Data Profiling Benchmark")
 print("=" * 60)
 print(f"Veri Boyutu : {df.shape}")
 
-ram_before = process.memory_info().rss / 1024 / 1024
+ram_before = get_ram_usage_mb()
 
-# Profil oluşturma
-profile_start = time.perf_counter()
-
-report = ProfileReport(
+report, elapsed = profile(
     df,
+    f"{REPORTS_DIR}/fgdata_profile.html",
+    config_file=FG_CONFIG_PATH,
     title="FG Data Profiling Report",
-    progress_bar=False
+    progress_bar=False,
 )
+
+ram_after = get_ram_usage_mb()
 
 desc = report.get_description()
 
-profile_time = time.perf_counter() - profile_start
-
-# HTML oluşturma
-os.makedirs("reports", exist_ok=True)
-
-html_start = time.perf_counter()
-
-report.to_file("reports/fgdata_profile.html")
-
-html_time = time.perf_counter() - html_start
-
-ram_after = process.memory_info().rss / 1024 / 1024
-
 print("\n" + "=" * 60)
-print("SONUÇLAR")
+print("SONUCLAR")
 print("=" * 60)
 
-print(f"Profil Oluşturma Süresi : {profile_time:.2f} sn")
-print(f"HTML Oluşturma Süresi   : {html_time:.2f} sn")
-print(f"Toplam Süre             : {profile_time + html_time:.2f} sn")
+print(f"Toplam Sure              : {elapsed:.2f} sn")
 
-print(f"\nRAM Başlangıç           : {ram_before:.2f} MB")
-print(f"RAM Son                 : {ram_after:.2f} MB")
-print(f"RAM Artışı              : {ram_after - ram_before:.2f} MB")
+print()
 
-print("\nProfil Özeti")
+print(f"RAM Baslangic            : {ram_before:.2f} MB")
+print(f"RAM Son                  : {ram_after:.2f} MB")
+print(f"RAM Artisi               : {ram_after - ram_before:.2f} MB")
+
+print()
+
+print("Profil Ozeti")
 print("-" * 60)
 print(desc.table)
 
-print(f"\nKolon Sayısı            : {len(desc.variables)}")
-print(f"Alert Sayısı            : {len(desc.alerts)}")
-print(f"Korelasyon Sayısı       : {len(desc.correlations)}")
+print()
 
-print("\nHTML Raporu")
+print(f"Kolon Sayisi             : {len(desc.variables)}")
+print(f"Alert Sayisi             : {len(desc.alerts)}")
+print(f"Korelasyon Sayisi        : {len(desc.correlations)}")
+
+print()
+
+print("HTML Raporu")
 print("-" * 60)
-print("reports/fgdata_profile.html")
+print(f"{REPORTS_DIR}/fgdata_profile.html")
