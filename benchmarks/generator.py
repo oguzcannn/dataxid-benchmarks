@@ -237,6 +237,7 @@ class DatasetGenerator:
                     series.min(),
                     series.max() + 1,
                     size,
+                    dtype=np.int32,
                 )
             )
 
@@ -250,7 +251,7 @@ class DatasetGenerator:
                     series.min(),
                     series.max(),
                     size,
-                )
+                ).astype(np.float32)
             )
 
 
