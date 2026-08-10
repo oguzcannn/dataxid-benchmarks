@@ -58,4 +58,3 @@ python benchmark_dataxid_vs_pandas.py
 - Python
 - DataXID Profiling
 - YData Profiling (FG Data)
-- Pandas<img width="2400" height="1500" alt="benchmark_dataxid_vs_pandas" src="https://github.com/user-attachments/assets/8a9b7491-e94c-430e-a636-381fd872a6e3" />
