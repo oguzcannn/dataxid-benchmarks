@@ -40,7 +40,7 @@ def get_dataxid_overview_config() -> ProfileConfig:
     """Config used for the scaling benchmark (fast, no correlations)."""
 
     return ProfileConfig(
-        mode="overview",
+        mode="complete",
 
         # Type inference
         text_unique_ratio=0.5,

@@ -29,6 +29,10 @@ class DatasetGenerator:
 
         self.df = pd.read_csv(csv_path)
 
+        ID_LIKE_COLUMNS = ["Sales_ID", "Sales_Region", "Sales_Representative"]
+
+        self.df = self.df.drop(columns=[c for c in ID_LIKE_COLUMNS if c in self.df.columns])
+
         # Remove pandas exported index column
         if "Unnamed: 0" in self.df.columns:
             self.df = self.df.drop(columns=["Unnamed: 0"])
