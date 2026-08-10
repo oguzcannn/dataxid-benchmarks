@@ -33,7 +33,7 @@ Measured metrics:
 - Scalability across dataset sizes (scaling benchmark only)
 ## Result
 DataXID Profiling vs YData Profiling, overview mode:
-![DataXID vs FG Data - overview mode](benchmark_dataxid_vs_fgdata.png)
+<img width="2400" height="1500" alt="gün5" src="https://github.com/user-attachments/assets/7b03833f-8620-4440-a704-e33f5b5966f3" />
 
 DataXID Profiling vs YData Profiling, complete mode (correlations and interactions enabled):
 <img width="2400" height="1500" alt="benchmark_dataxid_vs_fgdata" src="https://github.com/user-attachments/assets/e4d75b9b-b59c-4cfe-bfdf-8978059d6d16" />
